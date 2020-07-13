@@ -1,4 +1,3 @@
-#include <openssl/aead.h>
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -6,6 +5,14 @@
 #include <iostream>
 #include <string>
 #include <zlib.h>
+#include <openssl/aead.h>
+#include <openssl/bio.h>
+#include <openssl/rsa.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <iostream>
+#include <string.h>
 
 using namespace std;
 
@@ -19,6 +26,12 @@ size_t dout_len = 1024;
 size_t buf_len = 1024;
 size_t nonce_len = 0;
 
+RSA *pPrivKey;
+RSA *pPubKey;
+FILE *pFile;
+unsigned char msg[] = "Test RSA Encryption and Decryption";
+unsigned char chiper[256], plain[256], chiper2[256];
+
 std::string ReplaceAll(std::string str, const std::string &from, const std::string &to)
 {
     size_t start_pos = 0;
@@ -28,6 +41,43 @@ std::string ReplaceAll(std::string str, const std::string &from, const std::stri
         start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
     }
     return str;
+}
+
+RSA *RetrivePrivKeyFromFile(const char *file_name)
+{
+    BIO *keybio = BIO_new(BIO_s_file());
+    BIO_read_filename(keybio, file_name);
+    RSA *output = PEM_read_bio_RSAPrivateKey(keybio, NULL, NULL, NULL);
+    BIO_free(keybio);
+    return output;
+}
+
+RSA *RetrivePubKeyFromX509(const char *file_name)
+{
+    BIO *certbio = BIO_new(BIO_s_file());
+    BIO_read_filename(certbio, file_name);
+    RSA *output = EVP_PKEY_get0_RSA(
+                    X509_get_pubkey(
+                        PEM_read_bio_X509(certbio, NULL, 0, NULL)));
+    BIO_free(certbio);
+    return output;
+}
+
+int WriteToFS(const char *file_name, unsigned char* c)
+{
+    BIO *outbio = BIO_new(BIO_s_file());
+    BIO_write_filename(outbio, file_name);
+    int nrbytes = BIO_printf(outbio,"%s",c);
+    BIO_free(outbio);
+    return nrbytes;
+}
+
+int ReadFromFS(const char *file_name, unsigned char* p)
+{
+    BIO *inputbio = BIO_new(BIO_s_file());
+    BIO_read_filename(inputbio, file_name);
+    int nrbytes = BIO_read(inputbio,p,256);
+    return nrbytes;
 }
 
 uint8_t *RetriveKeyFromString(std::string stf, size_t key_size)
@@ -54,7 +104,27 @@ int main()
     int key_size = 32;
     size_t out_len = sizeof(out);
     std::string input_key = "f2 fc e5 0d c7 91 9c d6 07 7e 60 35 3e c9 ab d5 a0 a8 4a 2d 7d a5 07 e8 34 a7 e0 c0 6d ea bc 20";
-    uint8_t *key = RetriveKeyFromString(ReplaceAll(input_key, std::string(" "), std::string("")), 32);
+
+    pPrivKey = RetrivePrivKeyFromFile("private.key");
+    pPubKey = RetrivePubKeyFromX509("public.crt");
+
+    RSA_private_encrypt(strlen(input_key.c_str()), (const unsigned char*)input_key.c_str(),
+                        chiper, pPrivKey, RSA_PKCS1_PADDING);
+
+    WriteToFS("enc_key",chiper);
+    ReadFromFS("enc_key",chiper2);
+
+    RSA_public_decrypt(sizeof(chiper2), chiper2, plain, pPubKey, RSA_PKCS1_PADDING);
+
+    cout << "[DEBUG] Original input_key :\n"
+         << input_key << endl;
+    cout << "[DEBUG] Post process input_key :\n"
+         << plain << endl;
+    cout << "[DEBUG] Chiper :\n"
+         << chiper << endl;
+
+    uint8_t *key = RetriveKeyFromString(
+        ReplaceAll(input_key, std::string(" "), std::string("")), 32);
     std::cout << "[DEBUG] AES_GCM 256 Key :";
     for (int i = 0; i < key_size; i = i + 1)
         printf("%02x ", key[i]);
