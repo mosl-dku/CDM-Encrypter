@@ -4,6 +4,7 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <iostream>
+#include <string.h>
 
 using namespace std;
 EVP_PKEY *temp;
@@ -14,6 +15,8 @@ const BIGNUM *val;
 BIO *certbio = NULL;
 BIO *keybio = NULL;
 X509 *cert = NULL;
+unsigned char msg[] = "Test RSA Encryption and Decryption";
+unsigned char chiper[256], plain[256];
 
 int main()
 {
@@ -40,4 +43,15 @@ int main()
     cout << BN_bn2hex(val) << endl;
     val = RSA_get0_e(pPubKey);
     cout << BN_bn2hex(val) << endl;
+/*RSA ENCRYPTION WITH PRIVATE KEY*/
+    int chiper_len = RSA_private_encrypt(strlen((const char*)msg), msg, 
+                                        chiper, pPrivKey, RSA_PKCS1_PADDING);
+    /*RSA_private_encrypt only supports RSA_PKCS1_PADDING or RSA_NO_PADDING*/
+    cout<<"length :\n" <<chiper_len<<endl;
+    cout<<"chiper text :\n"<<chiper<<endl;
+/*RSA ENCRYPTION WITH PRIVATE KEY*/
+    int plain_len = RSA_public_decrypt(sizeof(chiper), chiper, 
+                                        plain, pPubKey, RSA_PKCS1_PADDING);
+    cout<<"length :\n" <<plain_len<<endl;
+    cout<<"Plain text :\n"<<plain<<endl;
 }
