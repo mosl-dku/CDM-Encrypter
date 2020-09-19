@@ -75,7 +75,7 @@ int WriteToFS(const char *file_name, unsigned char* c)
 {
     BIO *outbio = BIO_new(BIO_s_file());
     BIO_write_filename(outbio, file_name);
-    int nrbytes = BIO_printf(outbio,"%s",c);
+    int nrbytes = BIO_write(outbio,c,256);
     BIO_free(outbio);
     return nrbytes;
 }
@@ -85,6 +85,7 @@ int ReadFromFS(const char *file_name, unsigned char* p)
     BIO *inputbio = BIO_new(BIO_s_file());
     BIO_read_filename(inputbio, file_name);
     int nrbytes = BIO_read(inputbio,p,256);
+	BIO_free(inputbio);
     return nrbytes;
 }
 
@@ -134,6 +135,8 @@ int main(int argc, char* argv[])
 		std::string key("f2 fc e5 0d c7 91 9c d6 07 7e 60 35 3e c9 ab d5 a0 a8 4a 2d 7d a5 07 e8 34 a7 e0 c0 6d ea bc 20");
 		printf("default_key_value: %s\n", key.c_str());
 		input_key = key;
+	} else {
+		printf("input key_value: %s\n", input_key.c_str());
 	}
 
 	if  (stat(argv[3], &sbuf) == -1) {
@@ -147,8 +150,16 @@ int main(int argc, char* argv[])
 		input_data = sample_input_data;
 		return 0;
 	}
+	memset(enc_output_filename, 0, sizeof(enc_output_filename));
 	if (argc == 4) {
 		sprintf(enc_output_filename, "%s.enc", argv[3]);
+	} else if (argc == 5) {
+		memcpy(enc_output_filename, argv[4], strlen(argv[4]));
+	} else {
+		printf("usage: encrypter key_path_dir key_value input_file output_file\n");
+		printf("note that you should have private.key, public.crt in the key_path_dir\n");
+		printf("note that you should provide 256 bit key stream in string\n");
+		return 0;
 	}
 
 
@@ -159,20 +170,28 @@ int main(int argc, char* argv[])
     pPrivKey = RetrivePrivKeyFromFile(Kpriv);
     pPubKey = RetrivePubKeyFromX509(Kpub);
 
-    RSA_private_encrypt(strlen(input_key.c_str()), (const unsigned char*)input_key.c_str(),
+    int sig_len = RSA_private_encrypt(input_key.length(), (const unsigned char*)input_key.c_str(),
                         cipher, pPrivKey, RSA_PKCS1_PADDING);
 
-    WriteToFS("enc_key",cipher);
-    ReadFromFS("enc_key",cipher2);
+    int wrlen = WriteToFS("enc_key",cipher);
+    int rdlen = ReadFromFS("enc_key",cipher2);
+	cout << "wrlen: " << wrlen << " rdlen: " << rdlen << std::endl;
 
-    RSA_public_decrypt(sizeof(cipher2), cipher2, plain, pPubKey, RSA_PKCS1_PADDING);
+	int plen;
+    plen = RSA_public_decrypt(RSA_size(pPubKey), cipher2, plain, pPubKey, RSA_PKCS1_PADDING);
+	cout << "sig_len: " << sig_len << " plen: " << plen<< std::endl;
+
+        ERR_load_crypto_strings();
+        char * err = (char *)malloc(130);
+        ERR_error_string(ERR_get_error(), err);
+        fprintf(stderr, "Error decrypting message: %s\n", err);
 
     cout << "[DEBUG] Original input_key :\n"
          << input_key << endl;
-    cout << "[DEBUG] Post process input_key :\n"
-         << plain << endl;
     cout << "[DEBUG] Chiper :\n"
          << cipher << endl;
+    cout << "[DEBUG] de-cipher input_key :\n"
+         << plain << endl;
 
     uint8_t *key = RetriveKeyFromString(
         ReplaceAll(input_key, std::string(" "), std::string("")), 32);
@@ -190,9 +209,11 @@ int main(int argc, char* argv[])
 	input_data.assign((std::istreambuf_iterator<char>(t)),
             std::istreambuf_iterator<char>());
 
+	t.close();
+
     Bytef *in = (Bytef *)input_data.c_str();
-    cout << "[DEBUG] Input Data : " << endl;
-    cout << input_data << endl;
+    //cout << "[DEBUG] Input Data : " << endl;
+    //cout << input_data << endl;
 
     unsigned long in_len = input_data.length();
     unsigned long nCompressedsize = in_len;
@@ -204,7 +225,7 @@ int main(int argc, char* argv[])
     cout << "[DEBUG] Compressed Data ("<< nCompressedsize <<"): " << endl;
     cout << pCompressedData << endl;
 
-	out_buflen = (nCompressedsize << 1) + 32;
+	out_buflen = (nCompressedsize << 4) + 32;
 	out = new uint8_t[out_buflen];
 
     const EVP_AEAD *aead = EVP_aead_aes_256_gcm();
@@ -218,15 +239,15 @@ int main(int argc, char* argv[])
 
     cout << "[DEBUG] Compressed and Encrypted message ("<< out_len <<"): " << endl;
     cout << out << endl;
-
-    FILE *out_file = NULL;
-	out_file = fopen(enc_output_filename, "wb");
-    if (out_file != NULL)
-    {
-        //printf("%d\n",out_len);
-        fwrite(out, out_len, 1, out_file);
-    }
-
-    fclose(out_file);
     EVP_AEAD_CTX_cleanup(&ctx);
+
+    std::ofstream out_file;
+	out_file.open(enc_output_filename, std::ofstream::out | std::ofstream::binary);
+	if (out_file.is_open()) {
+		out_file.write((char *)out, out_len);
+		out_file.close();
+		cout << "[DEBUG] file written "<< out_len <<" bytes" << std::endl;
+	} else {
+		cout << "filename: " << enc_output_filename << std::endl;
+	}
 }
