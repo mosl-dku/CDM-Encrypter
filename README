@@ -1,0 +1,23 @@
+README for dek_keygen & CDM-Encrypter
+
+	dek_gen (data encryption key) 
+	run dek_gen.sh to generate DEK
+		datafile --> Hd
+		codehash --> Hc
+		extend Hd with Hc, sha256(Hd || Hc)
+	pick the DEK and run CDM-Encrypter with DEK
+	
+	CDM-Encrypter
+		run with key_path_dir , DEK, input_file, output_file
+		key_path_dir includes private.key (private key), public.crt (certificate)
+		DEK from dek_gen
+		input_file is the source CDM csv file
+		output_file is the encrypted file
+
+	After the encryption, 
+		it will generates enc_key, output_file
+			enc_key is the encrypted DEK
+			output_file is the encrypted data
+
+		
+
