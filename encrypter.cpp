@@ -173,8 +173,10 @@ int main(int argc, char* argv[])
     int sig_len = RSA_private_encrypt(input_key.length(), (const unsigned char*)input_key.c_str(),
                         cipher, pPrivKey, RSA_PKCS1_PADDING);
 
-    int wrlen = WriteToFS("enc_key",cipher);
-    int rdlen = ReadFromFS("enc_key",cipher2);
+	char enc_key_filename[256];
+	sprintf(enc_key_filename, "%s.key", enc_output_filename);
+    int wrlen = WriteToFS(enc_key_filename, cipher);
+    int rdlen = ReadFromFS(enc_key_filename,cipher2);
 	cout << "wrlen: " << wrlen << " rdlen: " << rdlen << std::endl;
 
 	int plen;
