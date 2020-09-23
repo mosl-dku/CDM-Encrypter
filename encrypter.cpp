@@ -133,10 +133,10 @@ int main(int argc, char* argv[])
 	if (strncmp("-1", argv[2], 2) == 0) {
 		// 256 bit key stream (32bytes)
 		std::string key("f2 fc e5 0d c7 91 9c d6 07 7e 60 35 3e c9 ab d5 a0 a8 4a 2d 7d a5 07 e8 34 a7 e0 c0 6d ea bc 20");
-		printf("default_key_value: %s\n", key.c_str());
+		//printf("default_key_value: %s\n", key.c_str());
 		input_key = key;
 	} else {
-		printf("input key_value: %s\n", input_key.c_str());
+		//printf("input key_value: %s\n", input_key.c_str());
 	}
 
 	if  (stat(argv[3], &sbuf) == -1) {
@@ -170,8 +170,8 @@ int main(int argc, char* argv[])
     pPrivKey = RetrivePrivKeyFromFile(Kpriv);
     pPubKey = RetrivePubKeyFromX509(Kpub);
 
-    int sig_len = RSA_private_encrypt(input_key.length(), (const unsigned char*)input_key.c_str(),
-                        cipher, pPrivKey, RSA_PKCS1_PADDING);
+    int sig_len = RSA_public_encrypt(input_key.length(), (const unsigned char*)input_key.c_str(),
+                        cipher, pPubKey, RSA_PKCS1_PADDING);
 
 	char enc_key_filename[256];
 	sprintf(enc_key_filename, "%s.key", enc_output_filename);
@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
 	//cout << "wrlen: " << wrlen << " rdlen: " << rdlen << std::endl;
 
 	int plen;
-    plen = RSA_public_decrypt(RSA_size(pPubKey), cipher2, plain, pPubKey, RSA_PKCS1_PADDING);
+    plen = RSA_private_decrypt(RSA_size(pPubKey), cipher2, plain, pPrivKey, RSA_PKCS1_PADDING);
 	//cout << "sig_len: " << sig_len << " plen: " << plen<< std::endl;
 
     //cout << "[DEBUG] Original input_key :\n" << input_key << endl;
