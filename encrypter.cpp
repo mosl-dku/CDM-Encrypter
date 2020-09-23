@@ -177,23 +177,15 @@ int main(int argc, char* argv[])
 	sprintf(enc_key_filename, "%s.key", enc_output_filename);
     int wrlen = WriteToFS(enc_key_filename, cipher);
     int rdlen = ReadFromFS(enc_key_filename,cipher2);
-	cout << "wrlen: " << wrlen << " rdlen: " << rdlen << std::endl;
+	//cout << "wrlen: " << wrlen << " rdlen: " << rdlen << std::endl;
 
 	int plen;
     plen = RSA_public_decrypt(RSA_size(pPubKey), cipher2, plain, pPubKey, RSA_PKCS1_PADDING);
-	cout << "sig_len: " << sig_len << " plen: " << plen<< std::endl;
+	//cout << "sig_len: " << sig_len << " plen: " << plen<< std::endl;
 
-        ERR_load_crypto_strings();
-        char * err = (char *)malloc(130);
-        ERR_error_string(ERR_get_error(), err);
-        fprintf(stderr, "Error decrypting message: %s\n", err);
-
-    cout << "[DEBUG] Original input_key :\n"
-         << input_key << endl;
-    cout << "[DEBUG] Chiper :\n"
-         << cipher << endl;
-    cout << "[DEBUG] de-cipher input_key :\n"
-         << plain << endl;
+    //cout << "[DEBUG] Original input_key :\n" << input_key << endl;
+    //cout << "[DEBUG] Chiper :\n" << cipher << endl;
+    //cout << "[DEBUG] de-cipher input_key :\n" << plain << endl;
 
     uint8_t *key = RetriveKeyFromString(
         ReplaceAll(input_key, std::string(" "), std::string("")), 32);
@@ -224,8 +216,8 @@ int main(int argc, char* argv[])
 	memset(pCompressedData, 0, in_len);
 
     int nResult = compress(pCompressedData, &nCompressedsize, in, in_len);
-    cout << "[DEBUG] Compressed Data ("<< nCompressedsize <<"): " << endl;
-    cout << pCompressedData << endl;
+    //cout << "[DEBUG] Compressed Data ("<< nCompressedsize <<"): " << endl;
+    //cout << pCompressedData << endl;
 
 	out_buflen = (nCompressedsize << 4) + 32;
 	out = new uint8_t[out_buflen];
@@ -239,8 +231,8 @@ int main(int argc, char* argv[])
 
     EVP_AEAD_CTX_seal(&ctx, out, &out_len, out_buflen, nonce, nonce_len, pCompressedData, nCompressedsize, NULL, 0);
 
-    cout << "[DEBUG] Compressed and Encrypted message ("<< out_len <<"): " << endl;
-    cout << out << endl;
+    //cout << "[DEBUG] Compressed and Encrypted message ("<< out_len <<"): " << endl;
+    //cout << out << endl;
     EVP_AEAD_CTX_cleanup(&ctx);
 
     std::ofstream out_file;
